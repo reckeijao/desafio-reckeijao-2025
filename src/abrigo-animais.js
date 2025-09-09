@@ -1,4 +1,8 @@
 import readline from 'node:readline';
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
 class AbrigoAnimais {
   constructor() {
@@ -11,106 +15,75 @@ class AbrigoAnimais {
       Bebe: { tipo: 'cão', brinquedos: ['LASER', 'RATO', 'BOLA'] },
       Loco: { tipo: 'jabuti', brinquedos: ['SKATE', 'RATO'] },
     };
-    this.maxAnimaisPorPessoa = 3;
+    this.brinquedosValidos = new Set(
+      Object.values(this.animais).flatMap(a => a.brinquedos)
+    );
   }
 
-  encontraPessoas(brinquedosPessoa1, brinquedosPessoa2, ordemAnimais) {
-    const resultado = { lista: [] };
-
-    const pessoa1 = this.processarBrinquedos(brinquedosPessoa1);
-    if (!pessoa1) return { erro: 'Brinquedo inválido' };
-
-    const pessoa2 = this.processarBrinquedos(brinquedosPessoa2);
-    if (!pessoa2) return { erro: 'Brinquedo inválido' };
-
-    const animaisOrdem = ordemAnimais.split(',').map(a => a.trim());
-    const animaisSet = new Set();
-
-    for (const animal of animaisOrdem) {
-      if (!this.animais[animal]) return { erro: 'Animal inválido' };
-      if (animaisSet.has(animal)) return { erro: 'Animal inválido' };
-      animaisSet.add(animal);
-    }
-
-    let contadorP1 = 0;
-    let contadorP2 = 0;
-
-    for (const animal of animaisOrdem) {
-      const info = this.animais[animal];
-      let dono = 'abrigo';
-
-      if (animal === 'Loco') {
-        dono = contadorP1 < this.maxAnimaisPorPessoa ? 'pessoa 1' :
-               (contadorP2 < this.maxAnimaisPorPessoa ? 'pessoa 2' : 'abrigo');
-        if (dono === 'pessoa 1') contadorP1++;
-        else if (dono === 'pessoa 2') contadorP2++;
-        resultado.lista.push(`${animal} - ${dono}`);
-        continue;
-      }
-
-      const atende = (brinquedos) => {
-        let index = 0;
-        for (const b of brinquedos) {
-          if (b === info.brinquedos[index]) index++;
-          if (index === info.brinquedos.length) return true;
-        }
-        return false;
-      };
-
-      const p1Atende = atende(pessoa1) && contadorP1 < this.maxAnimaisPorPessoa;
-      const p2Atende = atende(pessoa2) && contadorP2 < this.maxAnimaisPorPessoa;
-
-      if (info.tipo === 'gato') {
-        if (p1Atende && !p2Atende) { dono = 'pessoa 1'; contadorP1++; }
-        else if (!p1Atende && p2Atende) { dono = 'pessoa 2'; contadorP2++; }
-      } else {
-        if (p1Atende && !p2Atende) { dono = 'pessoa 1'; contadorP1++; }
-        else if (!p1Atende && p2Atende) { dono = 'pessoa 2'; contadorP2++; }
-        else if (p1Atende && p2Atende) { dono = 'abrigo'; }
-      }
-
-      resultado.lista.push(`${animal} - ${dono}`);
-    }
-
-    resultado.lista.sort();
-    return resultado;
-  }
-
-  processarBrinquedos(brinquedosStr) {
-    if (!brinquedosStr) return null;
-    const arr = brinquedosStr.split(',').map(b => b.trim().toUpperCase());
-    const set = new Set();
-    for (const b of arr) {
-      if (!b || set.has(b)) return null;
-      set.add(b);
-    }
-    return arr;
-  }
-}
-
-// Função para entrada de dados pelo prompt
-function pedirDados() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  rl.question('Digite os brinquedos da pessoa 1 (separados por vírgula): ', (p1) => {
-    rl.question('Digite os brinquedos da pessoa 2 (separados por vírgula): ', (p2) => {
-      rl.question('Digite a ordem dos animais (separados por vírgula): ', (ordem) => {
-        const abrigo = new AbrigoAnimais();
-        const resultado = abrigo.encontraPessoas(p1, p2, ordem);
-        console.log('\nResultado:');
-        console.log(resultado);
+encontraPessoas() {
+  rl.question('brinquedos da pessoa 1: ', (brinquedosPessoa1) => {
+    const p1 = brinquedosPessoa1.split(',').map(s => s.trim());
+    rl.question('brinquedos da pessoa 2: ', (brinquedosPessoa2) => {
+      const p2 = brinquedosPessoa2.split(',').map(s => s.trim());
+      rl.question('ordem dos animais: ', (ordemAnimais) => {
+        const ordem = ordemAnimais.split(',').map(s => s.trim());
         rl.close();
+        if(new Set(p1).size !== p1.length || new Set(p2).size !== p2.length) {
+          return { erro: 'Brinquedo repetido', lista: null };
+        }
+        if(new Set(ordem).size !== ordem.length) {
+          return { erro: 'Animal repetido', lista: null };
+        }
+        if(!ordem.every(nome => this.animais[nome])) {
+          return { erro: 'Animal inválido', lista: null };
+        }
+
+        let adotadosP1 = 0;
+        let adotadosP2 = 0;
+        const resultado = [];
+
+        for(const nome of ordem) {
+          const animal = this.animais[nome];
+          let destino = 'abrigo';
+
+          // Corrigir chamada de satisfaz (ajuste conforme implementação real)
+          const p1ok = this.satisfaz(p1, animal.brinquedos) && adotadosP1 < 3;
+          const p2ok = this.satisfaz(p2, animal.brinquedos) && adotadosP2 < 3;
+
+          if(p1ok && !p2ok) {
+            destino = 'pessoa 1';
+            adotadosP1++;
+          } else if(!p1ok && p2ok) {
+            destino = 'pessoa 2';
+            adotadosP2++;
+          } else if(p1ok && p2ok) {
+            destino = 'abrigo';
+          }
+          lista.push({ animal: nome, destino });
+        }
+
+        lista.sort((a, b) => a.localeCompare(b));
+
+        return {erro, lista };
       });
     });
   });
 }
+  satisfaz(animal, brinquedosPessoa) {
+    if(animal.tipo === 'jabuti' && animal === this.animais['Loco']) {
+      return true;
+    }
 
-// Executa a função se o arquivo for rodado diretamente
-if (process.argv[1].endsWith('abrigo-animais.js')) {
-  pedirDados();
+    const seq = animal.brinquedos;
+    let i = 0;
+    for (const b of brinquedosPessoa) {
+      if (b === seq[i]) {
+        i++;
+        if (i === seq.length) return true;
+      }
+    }
+    return i === seq.length;
+}
 }
 
 export { AbrigoAnimais as AbrigoAnimais };
