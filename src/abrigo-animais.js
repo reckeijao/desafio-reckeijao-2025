@@ -1,9 +1,3 @@
-import readline from 'node:readline';
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
 class AbrigoAnimais {
   constructor() {
     this.animais = {
@@ -18,70 +12,71 @@ class AbrigoAnimais {
     this.brinquedosValidos = new Set(
       Object.values(this.animais).flatMap(a => a.brinquedos)
     );
-}
-
-encontraPessoas() {
-  rl.question('brinquedos da pessoa 1: ', (brinquedosPessoa1) => {
-    const p1 = brinquedosPessoa1.split(',').map(s => s.trim());
-    rl.question('brinquedos da pessoa 2: ', (brinquedosPessoa2) => {
-      const p2 = brinquedosPessoa2.split(',').map(s => s.trim());
-      rl.question('ordem dos animais: ', (ordemAnimais) => {
-        const ordem = ordemAnimais.split(',').map(s => s.trim());
-        rl.close();
-        const resultado = this.processaAdocao(p1, p2, ordem);
-        if (resultado.erro) {
-          console.log('Erro:', resultado.erro);
-        } else {
-          console.log('Resultado:', resultado.lista);
-        }
-      });
-    });
-  });
-}
-
-processaAdocao(p1, p2, ordem) {
-  if(new Set(p1).size !== p1.length || new Set(p2).size !== p2.length) {
-    return { erro: 'Brinquedo repetido', lista: null };
-  }
-  if(new Set(ordem).size !== ordem.length) {
-    return { erro: 'Animal repetido', lista: null };
-  }
-  if(!ordem.every(nome => this.animais[nome])) {
-    return { erro: 'Animal inválido', lista: null };
   }
 
-  let adotadosP1 = 0;
-  let adotadosP2 = 0;
-  const resultado = [];
+  encontraPessoas(b1, b2, ordem) {
+    const p1 = b1.split(',').map(s => s.trim());
+    const p2 = b2.split(',').map(s => s.trim());
+    const ordemArr = ordem.split(',').map(s => s.trim());
 
-  for(const nome of ordem) {
-    const animal = this.animais[nome];
-    let destino = 'abrigo';
+    let resultado = this.processaAdocao(p1, p2, ordemArr);
 
-    const p1ok = this.satisfaz(animal, p1) && adotadosP1 < 3;
-    const p2ok = this.satisfaz(animal, p2) && adotadosP2 < 3;
-
-    if(p1ok && !p2ok) {
-      destino = 'pessoa 1';
-      adotadosP1++;
-    } else if(!p1ok && p2ok) {
-      destino = 'pessoa 2';
-      adotadosP2++;
-    } else if(p1ok && p2ok) {
-      destino = 'abrigo';
+    if(resultado.lista) { 
+      resultado.lista = resultado.lista.map(item => `${item.animal} - ${item.destino}`);
     }
-    resultado.push({ animal: nome, destino });
+
+    return resultado;
+
   }
 
-  resultado.sort((a, b) => a.animal.localeCompare(b.animal));
+  processaAdocao(p1, p2, ordem) {
+    //verifica duplicados
+    if(new Set(p1).size !== p1.length || new Set(p2).size !== p2.length) {
+      return { erro: 'Brinquedo inválido', lista: null };
+    }
+    if(new Set(ordem).size !== ordem.length || !ordem.every(nome => this.animais[nome])) {
+      return { erro: 'Animal inválido', lista: null };
+    }
+    //verifica animais inválidos
+    if(!ordem.every(nome => this.animais[nome])) {
+      return { erro: 'Animal inválido', lista: null };
+    }
+    //verifica brinquedos inválidos
+    if(!p1.every(b => this.brinquedosValidos.has(b)) || 
+      !p2.every(b => this.brinquedosValidos.has(b))) {
+      return { erro: 'Brinquedo inválido', lista: null };
+    }
 
-  return { erro: null, lista: resultado };
-}
+    let adotadosP1 = 0;
+    let adotadosP2 = 0;
+    const resultado = [];
+
+    for(const nome of ordem) {
+      const animal = this.animais[nome];
+      let destino = 'abrigo';
+
+      const p1ok = this.satisfaz(animal, p1) && adotadosP1 < 3;
+      const p2ok = this.satisfaz(animal, p2) && adotadosP2 < 3;
+
+      if (p1ok && !p2ok) {
+        destino = 'pessoa 1';
+        adotadosP1++;
+      } else if (!p1ok && p2ok) {
+        destino = 'pessoa 2';
+        adotadosP2++;
+      } else if (p1ok && p2ok) {
+        destino = 'abrigo';
+      }
+      resultado.push({ animal: nome, destino });
+    }
+    //ordena lista por nome do animal
+    resultado.sort((a, b) => a.animal.localeCompare(b.animal));
+    
+    return { erro: null, lista: resultado };
+  }
 
   satisfaz(animal, brinquedosPessoa) {
-    if(animal.tipo === 'jabuti' && animal === this.animais['Loco']) {
-      return true;
-    }
+    if(animal === this.animais['Loco']) return true;
 
     const seq = animal.brinquedos;
     let i = 0;
@@ -92,7 +87,7 @@ processaAdocao(p1, p2, ordem) {
       }
     }
     return i === seq.length;
-}
+  }
 }
 
 export { AbrigoAnimais as AbrigoAnimais };
